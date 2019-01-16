@@ -17,8 +17,6 @@ int main(int argc, char** argv)
   double tfinal = 10.;
   double dt = 0.001;
 
-  int nb_iterations = int(ceil(tfinal / deltaT));
-
   double CI_rho = 10.;
   double CI_u = 1.;
   double CI_E = 100.;

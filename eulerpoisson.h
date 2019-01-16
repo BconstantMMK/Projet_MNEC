@@ -23,7 +23,7 @@ class Schema_VF_1D
 
   std::vector<std::vector<double> > _Wsol; // (rho, rho*u, rho*E)
   std::vector<std::vector<double> > _Wsol_moins; // vecteur solution à l'itération précédente
-  std::vector<std::vector<double> > _Gravity; // (phi)
+  std::vector<double> _Gravity; // (phi)
   std::vector<std::vector<double> > _LapMat1D; // matrice creuse du laplacien
 
  public: // Méthodes et opérateurs de la classe
@@ -37,8 +37,7 @@ class Schema_VF_1D
   virtual void TimeScheme(tfinal) = 0;
   virtual void Euler() = 0;
   virtual void Source() = 0;
-  virtual void RightFlux() = 0;
-  virtual void LeftFlux() = 0;
+  virtual void Flux() = 0;
 };
 
 class Rusanov : public Schema_VF_1D
@@ -51,8 +50,7 @@ class Rusanov : public Schema_VF_1D
    void TimeScheme(tfinal);
    void Euler();
    void Source();
-   void RightFlux();
-   void LeftFlux();
+   void Flux();
 };
 
 class Relaxation : public Schema_VF_1D
@@ -64,6 +62,5 @@ class Relaxation : public Schema_VF_1D
 
  public:
    void TimeScheme(tfinal);
-   void RightFlux();
-   void LeftFlux();
+   void Flux();
 };
