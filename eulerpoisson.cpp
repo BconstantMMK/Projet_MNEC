@@ -12,21 +12,12 @@ Schema_VF_1D::~Schema_VF_1D()
 }
 
 void Initialize(double xmin, double xmax, int Nx, double hx,
-   double dt, double CI_rho, double CI_u, double CI_E,
-      double CL_u_g, double CL_u_d, double CL_rho_g, double CL_rho_d,
-          double CL_E_g, double CL_E_d, double CL_phi_g, double CL_phi_d)
+   double dt, double CI_rho, double CI_u, gamma);
 {
 
     _xmin = xmin; _xmax = xmax; _Nx = Nx; _hx = hx;
     _dt = dt;
-    _CL_u_g = CL_u_g;
-    _CL_u_d = CL_u_d;
-    _CL_rho_g = CL_rho_g;
-    _CL_rho_d = CL_rho_d;
-    _CL_E_g = CL_E_g;
-    _CL_E_d = CL_E_d;
-    _CL_phi_g = CL_phi_g;
-    _CL_phi_d = CL_phi_d;
+    _gamma = gamma;
 
     _Gravity.resize(Nx);
     _Wsol[].resize(3);
@@ -64,7 +55,16 @@ void Initialize(double xmin, double xmax, int Nx, double hx,
 
 }
 
-void SaveSol(const std::string& name_file) {}
+void SaveSol(const std::string& name_file, const int iter)
+{
+  ofstream flux_sol;
+  flux_sol.open(name_file + ".txt", ios::out);
+  for (int j = 0; j < _Nx; ++j) {
+    flux_sol << iter << " " << (j*_hx/2) << " " << _Wsol[0][j] << " " << _Wsol[1][j]/_Wsol[0][j] << " " _Wsol[2][j]/_Wsol[0][j] << endl;
+  }
+  flux_sol.close();
+
+}
 
 void Poisson()
 {
@@ -88,9 +88,7 @@ void Poisson()
 void Rusanov::Initialize(DataFile data_file)
 {
   Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
-     double dt, double CI_rho, double CI_u, double CI_E,
-        double CL_u_g, double CL_u_d, double CL_rho_g, double CL_rho_d,
-            double CL_E_g, double CL_E_d, double CL_phi_g, double CL_phi_d);
+     double dt, double CI_rho, double CI_u, double CI_E, gamma);
 
   _Fg[].resize(3);
   _Fd[].resize(3);
@@ -131,10 +129,24 @@ void Rusanov::Source()
 void Rusanov::TimeScheme(double tfinal) {
 
   int nbiter = int(ceil(tfinal / _dt));
-  for (int n=0; n<nbiter; ++n){
+  for (int iter=0; iter<nbiter; ++n){
     Euler();
     Source();
     Schema_VF_1D::Poisson();
+    Schema_VF_1D::SaveSol("EquilibriumFlow1D", iter);
+    //Barre de Chargement ------------------------------------------
+    int i_barre;
+    const int p = floor((((double)iter) / ((double)nbiter)) * 100);
+    printf("[");
+    for (i_barre = 0; i_barre <= p; i_barre += 2)
+    printf("*");
+    for (; i_barre <= 100; i_barre += 2)
+    printf("-");
+    printf("] %3d %%", p);
+    for (i_barre = 0; i_barre < 59; ++i_barre)
+    printf("%c", 8);
+    fflush(stdout);
+    //--------------------------------------------------------------
   }
 }
 
@@ -146,7 +158,7 @@ void Rusanov::TimeScheme(double tfinal) {
 void Relaxation::Initialize(DataFile data_file)
 {
   Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
-     double dt, double CI_rho, double CI_u, double CI_E);
+     double dt, double CI_rho, double CI_u, double CI_E, double gamma);
 
   _Fdg[].resize(5);
   _Fdd[].resize(5);

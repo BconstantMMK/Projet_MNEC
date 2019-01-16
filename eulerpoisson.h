@@ -18,7 +18,7 @@ class Schema_VF_1D
  protected: // Les attributs de la classe
 
   double _x_min, _x_max, _h_x, _dt;
-  double _CL_u_g, _CL_u_d, _CL_rho_g, _CL_rho_d, _CL_E_g, _CL_E_d, _CL_phi_g, _CL_phi_d;
+  double _gamma;
   int _Nx;
 
   std::vector<std::vector<double> > _Wsol; // (rho, rho*u, rho*E)
@@ -31,8 +31,8 @@ class Schema_VF_1D
   // Constructeur : Initialiser xmin, xmax, Nx, hx, dt, _Wsol_0
   virtual ~Schema_VF_1D();
 
-  void Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,CL_u_g,CL_u_d,CL_rho_g,CL_rho_d,CL_E_g,CL_E_d,CL_phi_g,CL_phi_d);
-  void SaveSol(const std::string& name_file);
+  void Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma);
+  void SaveSol(const std::string& name_file, const int iter);
   void Poisson();
   virtual void TimeScheme(tfinal) = 0;
   virtual void Euler() = 0;
