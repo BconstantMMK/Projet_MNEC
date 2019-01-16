@@ -7,4 +7,4 @@ std::vector<double> prodMVC(std::vector<std::vector<double> > A, std::vector<dou
 
 double dot(std::vector<double> u, std::vector<double> v);
 
-std::vector<double> CG (std::vector<std::vector<double> > A, std::vector<double> b, std::vector<double> x0 , double err, int kmax, int nx);
+std::vector<double> CG(std::vector<std::vector<double> > A, std::vector<double> b, std::vector<double> x0 , double err, int kmax, int nx);

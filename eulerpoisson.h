@@ -1,6 +1,3 @@
-#ifndef EULERPOISSON_H_
-#define EULERPOISSON_H_
-
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -17,7 +14,7 @@ class Schema_VF_1D
 {
  protected: // Les attributs de la classe
 
-  double _x_min, _x_max, _h_x, _dt;
+  double _xmin, _xmax, _hx, _dt;
   double _gamma; double _g;
   int _Nx;
 
@@ -31,35 +28,32 @@ class Schema_VF_1D
   // Constructeur : Initialiser xmin, xmax, Nx, hx, dt, _Wsol_0
   virtual ~Schema_VF_1D();
 
-  void Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma,g);
+  void Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g);
   void SaveSol(const std::string& name_file, const int iter);
   void Poisson();
-  virtual void TimeScheme(tfinal) = 0;
+  virtual void TimeScheme(double tfinal) = 0;
   virtual void Euler() = 0;
   virtual void Source() = 0;
-  virtual void Flux() = 0;
+  // virtual void Flux() = 0;
 };
 
 class Rusanov : public Schema_VF_1D
 {
- protected:
-   std::vector<std::vector<double> > _Fg; // flux gauche
-   std::vector<std::vector<double> > _Fd; // flux droit
-
  public:
-   void TimeScheme(tfinal);
+   void TimeScheme(double tfinal);
    void Euler();
    void Source();
 };
 
-class Relaxation : public Schema_VF_1D
-{
- protected:
-  std::vector<std::vector<double> > _Wdelta; // (rho, u, epsilon, pi, psi)
-  std::vector<std::vector<double> > _Fdg; // flux gauche pour le problème de relaxation
-  std::vector<std::vector<double> > _Fdd; // flux droit pour le problème de relaxation
-
- public:
-   void TimeScheme(tfinal);
-   void Flux();
-};
+// class Relaxation : public Schema_VF_1D
+// {
+//  protected:
+//   std::vector<std::vector<double> > _Wdelta; // (rho, u, epsilon, pi, psi)
+//   std::vector<std::vector<double> > _Fdg; // flux gauche pour le problème de relaxation
+//   std::vector<std::vector<double> > _Fdd; // flux droit pour le problème de relaxation
+//
+//  public:
+//    void Initialize();
+//    void TimeScheme(double tfinal);
+//    void Flux();
+// };

@@ -11,8 +11,7 @@ Schema_VF_1D::~Schema_VF_1D()
 {
 }
 
-void Initialize(double xmin, double xmax, int Nx, double hx,
-   double dt, double CI_rho, double CI_u, double gamma, double g);
+void Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g)
 {
     _xmin = xmin; _xmax = xmax; _Nx = Nx; _hx = hx;
     _dt = dt;
@@ -20,8 +19,8 @@ void Initialize(double xmin, double xmax, int Nx, double hx,
     _g = g;
 
     _Gravity.resize(Nx);
-    _Wsol[].resize(3);
-    _Wsol_moins[].resize(3);
+    _Wsol.resize(3);
+    _Wsol_moins.resize(3);
 
     for (int i = 0; i < 3; ++i)
     {
@@ -33,6 +32,7 @@ void Initialize(double xmin, double xmax, int Nx, double hx,
       _Wsol[0][j] = CI_rho;
       _Wsol[1][j] = CI_rho*CI_u;
       _Wsol[2][j] = CI_rho*CI_E;
+      _Gravity[j] = j*_hx*g;
     }
 
     _LapMat1D.resize(3);
@@ -54,61 +54,54 @@ void Initialize(double xmin, double xmax, int Nx, double hx,
     _LapMat1D[2][_Nx-1] = 0;
 }
 
-void SaveSol(const std::string& name_file, const int iter)
+void Schema_VF_1D::SaveSol(const std::string& name_file, const int iter)
 {
   ofstream flux_sol;
   flux_sol.open(name_file + ".txt", ios::out);
   for (int j = 0; j < _Nx; ++j) {
-    flux_sol << iter << " " << (j*_hx/2) << " " << _Wsol[0][j] << " " << _Wsol[1][j]/_Wsol[0][j] << " " _Wsol[2][j]/_Wsol[0][j] << endl;
+    flux_sol << iter << " " << (j*_hx/2) << " " << _Wsol[0][j] << " " << _Wsol[1][j]/_Wsol[0][j] << " " << _Wsol[2][j]/_Wsol[0][j] << endl;
   }
   flux_sol.close();
 }
 
-void Poisson()
+void Schema_VF_1D::Poisson()
 {
   double CL_phi_g = 0;
-  double CL_phi_d = g;
+  double CL_phi_d = _g;
   double pi = acos(-1);
   double G = 6.67*pow(10,-11);
   int kmax = _Nx + 100;
+  std::vector<double> x0(_Gravity);
   std::vector<double> b;
   b.resize(_Nx);
 
   b[0] -= CL_phi_g/(_hx*_hx);
-  b[_Nx-1] -= Cm_phi_d/(_hx*_hx);
+  b[_Nx-1] -= CL_phi_d/(_hx*_hx);
 
   for (int i = 0; i < _Nx; ++i){
     b[i] = 4*pi*G*_Wsol[0][i];
   }
 
-  _Gravity = CG(_LapMat1D, b, _Gravity, 0.000001, kmax, _Nx);
+  _Gravity = CG(_LapMat1D, b, x0, 0.000001, kmax, _Nx);
 }
 
 //####################################################################
 //Rusanov
 //####################################################################
 
-void Rusanov::Initialize(DataFile data_file)
-{
-  Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
-     double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g);
-
-  Schema_VF_1D::Poisson();
-}
-
 void Rusanov::Euler()
 {
   double bi=0.;
   _Wsol_moins = _Wsol;
-  Flux();
   for (int j = 1; j < _Nx-1; ++j){
-    bi = max({abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]-1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]-1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]-1),
-    abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]+1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]+1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]+1),});
+    // bi = max({abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]-1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]-1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]-1),
+    // abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]+1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]+1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]+1)});
+    bi = 1.;
     _Wsol[0][j] = _Wsol_moins[0][j] - (_dt/_hx)*(0.5*(_Wsol_moins[1][j+1]-_Wsol_moins[1][j-1])
                                                   - bi*0.5*(_Wsol_moins[0][j+1] -2*_Wsol_moins[0][j] + _Wsol_moins[0][j-1]));
     _Wsol[1][j] = _Wsol_moins[1][j] - (_dt/_hx)*(0.5*((_Wsol_moins[1][j+1]*_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1] + _Wsol_moins[0][j+1])-(_Wsol_moins[1][j-1]*_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1] + _Wsol_moins[0][j-1]))
                                                   - bi*0.5*(_Wsol_moins[1][j+1] -2*_Wsol_moins[1][j] + _Wsol_moins[1][j-1]));
-    _Wsol[2][j] = _Wsol_moins[2][j] - (_dt/_hx)*(0.5*((_Wsol_moins[2][j+1]+_Wsol_moins[0][j+1])*_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1])-(_Wsol_moins[2][j-1]+_Wsol_moins[0][j-1])*_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]))
+    _Wsol[2][j] = _Wsol_moins[2][j] - (_dt/_hx)*(0.5*(((_Wsol_moins[2][j+1]+_Wsol_moins[0][j+1])*_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1])-((_Wsol_moins[2][j-1]+_Wsol_moins[0][j-1])*_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]))
                                                   - bi*0.5*(_Wsol_moins[2][j+1] -2*_Wsol_moins[2][j] + _Wsol_moins[2][j-1]));
   }
 
@@ -116,8 +109,9 @@ void Rusanov::Euler()
   double CL_rho_g = _hx*_Wsol_moins[0][0]*_g + _Wsol_moins[0][0];
   double CL_rhoE_g = _hx*_Wsol_moins[2][0]*_g -_g/(_gamma-1) + _Wsol_moins[2][0];
 
-  bi = max({abs(_Wsol_moins[1][0]/_Wsol_moins[0][0]-1),abs(0-1),abs(_Wsol_moins[1][1]/_Wsol_moins[0][1]-1),
-  abs(_Wsol_moins[1][0]/_Wsol_moins[0][0]+1),abs(0+1),abs(_Wsol_moins[1][1]/_Wsol_moins[0][1]+1),});
+  // bi = max({abs(_Wsol_moins[1][0]/_Wsol_moins[0][0]-1),abs(0-1),abs(_Wsol_moins[1][1]/_Wsol_moins[0][1]-1),
+  // abs(_Wsol_moins[1][0]/_Wsol_moins[0][0]+1),abs(0+1),abs(_Wsol_moins[1][1]/_Wsol_moins[0][1]+1)});
+  bi = 1.;
 
   _Wsol[0][0] = _Wsol_moins[0][0] - (_dt/_hx)*(0.5*(_Wsol_moins[1][1]-0)
                                                 - bi*0.5*(_Wsol_moins[0][1] -2*_Wsol_moins[0][0] + CL_rho_g));
@@ -131,8 +125,9 @@ void Rusanov::Euler()
   double CL_rho_d = _hx*_Wsol_moins[0][_Nx-1]*_g + _Wsol_moins[0][_Nx-1];
   double CL_rhoE_d = _hx*_Wsol_moins[2][_Nx-1]*_g -_g/(_gamma-1) + _Wsol_moins[2][_Nx-1];
 
-  bi = max({abs(_Wsol_moins[1][_Nx-1]/_Wsol_moins[0][_Nx-1]-1),abs(0-1),abs(_Wsol_moins[1][_Nx-2]/_Wsol_moins[0][_Nx-2]-1),
-  abs(_Wsol_moins[1][_Nx-1]/_Wsol_moins[0][_Nx-1]+1),abs(0+1),abs(_Wsol_moins[1][_Nx-2]/_Wsol_moins[0][_Nx-2]+1),});
+  // bi = max({abs(_Wsol_moins[1][_Nx-1]/_Wsol_moins[0][_Nx-1]-1),abs(0-1),abs(_Wsol_moins[1][_Nx-2]/_Wsol_moins[0][_Nx-2]-1),
+  // abs(_Wsol_moins[1][_Nx-1]/_Wsol_moins[0][_Nx-1]+1),abs(0+1),abs(_Wsol_moins[1][_Nx-2]/_Wsol_moins[0][_Nx-2]+1)});
+  bi = 1.;
 
   _Wsol[0][_Nx-1] = _Wsol_moins[0][_Nx-2] - (_dt/_hx)*(0.5*(0-_Wsol_moins[1][_Nx-2])
                                                 - bi*0.5*(_Wsol_moins[0][_Nx-2] -2*_Wsol_moins[0][_Nx-1] + CL_rho_d));
@@ -150,14 +145,16 @@ void Rusanov::Source()
     _Wsol[1][j] = _Wsol_moins[1][j] - _dt*(_Wsol_moins[0][j]*((_Gravity[j]-_Gravity[j-1])/_hx));
     _Wsol[2][j] = _Wsol_moins[2][j] - _dt*(_Wsol_moins[1][j]*((_Gravity[j]-_Gravity[j-1])/_hx));
   }
-  _Wsol[1][_Nx-1] = _Wsol_moins[1][_Nx-1] - _dt*(_Wsol_moins[0][_Nx-1]*((_Gravity[j]-CL_phi_g)/_hx));
-  _Wsol[2][_Nx-1] = _Wsol_moins[2][_Nx-1] - _dt*(_Wsol_moins[1][_Nx-1]*((_Gravity[j]-CL_phi_g)/_hx));
+  _Wsol[1][0] = _Wsol_moins[1][0] - _dt*(_Wsol_moins[0][0]*((_Gravity[0]-CL_phi_g)/_hx));
+  _Wsol[2][0] = _Wsol_moins[2][0] - _dt*(_Wsol_moins[1][0]*((_Gravity[0]-CL_phi_g)/_hx));
 }
 
 void Rusanov::TimeScheme(double tfinal) {
 
+  Schema_VF_1D::Poisson();
+
   int nbiter = int(ceil(tfinal / _dt));
-  for (int iter=0; iter<nbiter; ++n){
+  for (int iter=0; iter<nbiter; ++iter){
     Euler();
     Source();
     Schema_VF_1D::Poisson();
@@ -183,23 +180,24 @@ void Rusanov::TimeScheme(double tfinal) {
 //Relaxation
 //####################################################################
 
-void Relaxation::Initialize(DataFile data_file)
-{
-  Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
-     double dt, double CI_rho, double CI_u, double CI_E, double gamma);
-
-  _Fdg[].resize(5);
-  _Fdd[].resize(5);
-  _Wdelta[].resize(5);
-
-  for (int i = 0; i < 5; ++i)
-   {
-     _Fdg[i].resize(Nx);
-     _Fdd[i].resize(Nx);
-     _Wdelta[i].resize(Nx);
-   }
-}
-
-void Rusanov::Flux() {}
-
-void Rusanov::TimeScheme(double tfinal) {}
+// void Relaxation::Initialize(double xmin, double xmax, int Nx, double hx,
+//    double dt, double CI_rho, double CI_u, double CI_E, double gamma)
+// {
+//   Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
+//      double dt, double CI_rho, double CI_u, double CI_E, double gamma);
+//
+//   _Fdg[].resize(5);
+//   _Fdd[].resize(5);
+//   _Wdelta[].resize(5);
+//
+//   for (int i = 0; i < 5; ++i)
+//    {
+//      _Fdg[i].resize(Nx);
+//      _Fdd[i].resize(Nx);
+//      _Wdelta[i].resize(Nx);
+//    }
+// }
+//
+// void Rusanov::Flux() {}
+//
+// void Rusanov::TimeScheme(double tfinal) {}

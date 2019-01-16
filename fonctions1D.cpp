@@ -2,14 +2,14 @@
 
 std::vector<double> prodMVC(std::vector<std::vector<double>> A, std::vector<double> x, int Nx)
 {
-  std::vector<double> y(N);
+  std::vector<double> y(Nx);
 
   for (int i = 0; i < Nx; i++)
   {
     y[i] =
         A[0][i] * x[i-1]
       + A[1][i] * x[i]
-      + A[2][i] * x[i+1]
+      + A[2][i] * x[i+1];
   }
 
   return y;
@@ -28,7 +28,7 @@ double dot(std::vector<double> u, std::vector<double> v)
   return y;
 }
 
-std::vector<double> CG(std::vector<std::vector<double>> A, std::vector<double> b, std::vector<double> x0, double err, int kmax, int nx, int ny)
+std::vector<double> CG(std::vector<std::vector<double>> A, std::vector<double> b, std::vector<double> x0, double err, int kmax, int nx)
 {
   // Algorithme du gradient conjugué parallèle qui prend en argument uniquement des vecteurs locaux et renvoie un vecteur local.
 
