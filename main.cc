@@ -17,12 +17,12 @@ int main(int argc, char** argv)
   double tfinal = 10.;
   double dt = 0.001;
 
-  double gamma = 1.7
+  double gamma = 1.7;
+  double g = 10;
 
   double CI_rho = 10.;
   double CI_u = 0.1;
-  double CI_pression = 0.0001;
-  double CI_E = CI_pression/((gamma-1.)*CI_rho) + CI_u*CI_u/2.;
+  double CI_E = CI_rho/((gamma-1.)*CI_rho) + CI_u*CI_u/2.;
 
   int schema = 1;
   //1 -> Rusanov
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
   if (Schema_VF_1D == 1){
     VF = new Rusanov();
-    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma);
+    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma,g);
     auto start = chrono::high_resolution_clock::now();
     VF->TimeScheme(tfinal);
     auto finish = chrono::high_resolution_clock::now();
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 
   if (Schema_VF_1D == 2){
     VF = new Relaxation();
-    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma);
+    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma,g);
     auto start = chrono::high_resolution_clock::now();
     VF->TimeScheme(tfinal);
     auto finish = chrono::high_resolution_clock::now();

@@ -18,7 +18,7 @@ class Schema_VF_1D
  protected: // Les attributs de la classe
 
   double _x_min, _x_max, _h_x, _dt;
-  double _gamma;
+  double _gamma; double _g;
   int _Nx;
 
   std::vector<std::vector<double> > _Wsol; // (rho, rho*u, rho*E)
@@ -31,7 +31,7 @@ class Schema_VF_1D
   // Constructeur : Initialiser xmin, xmax, Nx, hx, dt, _Wsol_0
   virtual ~Schema_VF_1D();
 
-  void Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma);
+  void Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,gamma,g);
   void SaveSol(const std::string& name_file, const int iter);
   void Poisson();
   virtual void TimeScheme(tfinal) = 0;
@@ -50,7 +50,6 @@ class Rusanov : public Schema_VF_1D
    void TimeScheme(tfinal);
    void Euler();
    void Source();
-   void Flux();
 };
 
 class Relaxation : public Schema_VF_1D
