@@ -1,4 +1,4 @@
-#include "functions.h"
+#include "eulerpoisson.h"
 
 using namespace std;
 
@@ -12,11 +12,20 @@ Schema_VF_1D::~Schema_VF_1D()
 }
 
 void Initialize(double xmin, double xmax, int Nx, double hx,
-   double dt, double CI_rho, double CI_u, double CI_E) {
+   double dt, double CI_rho, double CI_u, double CI_E,
+      double CL_u_g, double CL_u_d, double CL_rho_g, double CL_rho_d,
+          double CL_E_g, double CL_E_d, double CL_phi_g, double CL_phi_d) {
 
     _xmin = xmin; _xmax = xmax; _Nx = Nx; _hx = hx;
-    _dt = dt; nb_iterations
-
+    _dt = dt;
+    _CL_u_g = CL_u_g;
+    _CL_u_d = CL_u_d;
+    _CL_rho_g = CL_rho_g;
+    _CL_rho_d = CL_rho_d;
+    _CL_E_g = CL_E_g;
+    _CL_E_d = CL_E_d;
+    _CL_phi_g = CL_phi_g;
+    _CL_phi_d = CL_phi_d;
 
     _Gravity.resize(Nx);
     _Wsol[].resize(3);
@@ -34,6 +43,24 @@ void Initialize(double xmin, double xmax, int Nx, double hx,
       _Wsol[2][j] = CI_rho*CI_E;
     }
 
+    _LapMat1D.resize(3);
+    double alpha = -2./(_hx * _hx);
+    double beta = 1/(_hx * _hx);
+
+    for (int i = 0; i < 3; i++)
+    {
+      _LapMat1D[i].resize(Nx);
+    }
+    for (int j = 0; j < _Nx; ++j){
+      _LapMat1D[0][j] = beta;
+      _LapMat1D[1][j] = alpha;
+      _LapMat1D[2][j] = beta;
+    }
+    _LapMat1D[0][0] = 0;
+    _LapMat1D[0][_Nx-1] = 0;
+    _LapMat1D[2][0] = 0;
+    _LapMat1D[2][_Nx-1] = 0;
+
 }
 
 void SaveSol(const std::string& name_file) {}
@@ -47,15 +74,17 @@ void Poisson() {}
 void Rusanov::Initialize(DataFile data_file)
 {
   Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
-     double dt, double CI_rho, double CI_u, double CI_E);
+     double dt, double CI_rho, double CI_u, double CI_E,
+        double CL_u_g, double CL_u_d, double CL_rho_g, double CL_rho_d,
+            double CL_E_g, double CL_E_d, double CL_phi_g, double CL_phi_d);
 
-  _Fl[].resize(3);
-  _Fr[].resize(3);
+  _Fg[].resize(3);
+  _Fd[].resize(3);
 
   for (int i = 0; i < 3; ++i)
    {
-     _Fl[i].resize(Nx);
-     _Fr[i].resize(Nx);
+     _Fg[i].resize(Nx);
+     _Fd[i].resize(Nx);
    }
 
 }
@@ -69,15 +98,15 @@ void Relaxation::Initialize(DataFile data_file)
   Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx,
      double dt, double CI_rho, double CI_u, double CI_E);
 
-  _Fdl[].resize(5);
-  _Fdr[].resize(5);
-  _Wd[].resize(5);
+  _Fdg[].resize(5);
+  _Fdd[].resize(5);
+  _Wdelta[].resize(5);
 
   for (int i = 0; i < 5; ++i)
    {
-     _Fdl[i].resize(Nx);
-     _Fdr[i].resize(Nx);
-     _Wd[i].resize(Nx);
+     _Fdg[i].resize(Nx);
+     _Fdd[i].resize(Nx);
+     _Wdelta[i].resize(Nx);
    }
 
 }

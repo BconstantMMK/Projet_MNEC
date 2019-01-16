@@ -2,7 +2,7 @@
 #include <fstream>
 #include <chrono>
 
-#include "funcions.h"
+#include "eulerpoisson.h"
 
 using namespace std;
 
@@ -23,6 +23,15 @@ int main(int argc, char** argv)
   double CI_u = 1.;
   double CI_E = 100.;
 
+  double CL_u_g = 0.;
+  double CL_u_d = 0.;
+  double CL_rho_g = 0.;
+  double CL_rho_d = 0.;
+  double CL_E_g = 0.;
+  double CL_E_d = 0.;
+  double CL_phi_g = 0.;
+  double CL_phi_d = 0.;
+
   int schema = 1;
   //1 -> Rusanov
   //2 -> Relaxation
@@ -31,7 +40,8 @@ int main(int argc, char** argv)
 
   if (Schema_VF_1D == 1){
     VF = new Rusanov();
-    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E);
+    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,
+    CL_u_g,CL_u_d,CL_rho_g,CL_rho_d,CL_E_g,CL_E_d,CL_phi_g,CL_phi_d);
     auto start = chrono::high_resolution_clock::now();
     VF->TimeScheme(tfinal);
     auto finish = chrono::high_resolution_clock::now();
@@ -39,7 +49,8 @@ int main(int argc, char** argv)
 
   if (Schema_VF_1D == 2){
     VF = new Relaxation();
-    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u);
+    VF->Initialize(xmin,xmax,Nx,hx,dt,CI_rho,CI_u,CI_E,
+    CL_u_g,CL_u_d,CL_rho_g,CL_rho_d,CL_E_g,CL_E_d,CL_phi_g,CL_phi_d);
     auto start = chrono::high_resolution_clock::now();
     VF->TimeScheme(tfinal);
     auto finish = chrono::high_resolution_clock::now();
