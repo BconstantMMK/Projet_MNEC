@@ -4,13 +4,15 @@ std::vector<double> prodMVC(std::vector<std::vector<double>> A, std::vector<doub
 {
   std::vector<double> y(Nx);
 
-  for (int i = 0; i < Nx; i++)
+  for (int i = 1; i < Nx-1; i++)
   {
     y[i] =
         A[0][i] * x[i-1]
       + A[1][i] * x[i]
       + A[2][i] * x[i+1];
   }
+  y[0] = A[1][0] * x[1] + A[2][0] * x[2];
+  y[Nx-1] = A[0][Nx-1] * x[Nx-2] + A[1][Nx-1] * x[Nx-1];
 
   return y;
 }
@@ -30,8 +32,6 @@ double dot(std::vector<double> u, std::vector<double> v)
 
 std::vector<double> CG(std::vector<std::vector<double>> A, std::vector<double> b, std::vector<double> x0, double err, int kmax, int nx)
 {
-  // Algorithme du gradient conjugué parallèle qui prend en argument uniquement des vecteurs locaux et renvoie un vecteur local.
-
   int k = 0;
 
   double norm_r, nr_carre, nr2_carre;
@@ -55,7 +55,7 @@ std::vector<double> CG(std::vector<std::vector<double>> A, std::vector<double> b
   p = r;
 
   nr_carre = dot(r, r);
-  norm_r = sqrt(nr_carre); //On stocke ces deux variables puisqu'on s'en sert toutes les deux plusieurs fois dans la suite
+  norm_r = sqrt(nr_carre); 
 
   while ((norm_r > err) and (k < kmax))
   {
