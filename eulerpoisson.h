@@ -56,8 +56,8 @@ class Relaxation : public Schema_VF_1D
    void Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g, double a);
    void TimeScheme(double tfinal);
    void Flux();
-   void UpdateFluxCase1(std::string sens, int j, double sigma);
-   void UpdateFluxCase2(std::string sens, int j, double sigma);
-   void UpdateFluxCase3(std::string sens, int j, double sigma);
-   void UpdateFluxCase4(std::string sens, int j, double sigma);
+   void UpdateFluxCase1(std::string sens, int j, double sigma, double Sl, double Sr);
+   void UpdateFluxCase2(std::string sens, int j, double sigma, double Sl, double Sr);
+   void UpdateFluxCase3(std::string sens, int j, double sigma, double Sl, double Sr);
+   void UpdateFluxCase4(std::string sens, int j, double sigma, double Sl, double Sr);
 };

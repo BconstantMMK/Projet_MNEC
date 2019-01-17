@@ -142,14 +142,7 @@ void Rusanov::Euler()
 
 void Rusanov::Source()
 {
-  double CL_phi_g = 0;
   _Wsol_moins = _Wsol;
-  // for (int j = 1; j < _Nx; ++j){
-  //   _Wsol[1][j+1] = _Wsol_moins[1][j+1] - _dt*(_Wsol_moins[0][j+1]*((_Gravity[j]-_Gravity[j-1])/_hx));
-  //   _Wsol[2][j+1] = _Wsol_moins[2][j+1] - _dt*(_Wsol_moins[1][j+1]*((_Gravity[j]-_Gravity[j-1])/_hx));
-  // }
-  // _Wsol[1][1] = _Wsol_moins[1][1] - _dt*(_Wsol_moins[0][1]*((_Gravity[0]-CL_phi_g)/_hx));
-  // _Wsol[2][1] = _Wsol_moins[2][1] - _dt*(_Wsol_moins[1][1]*((_Gravity[0]-CL_phi_g)/_hx));
 
   for (int j = 1; j < _Nx+1; ++j){
     _Wsol[1][j] = _Wsol_moins[1][j] - _dt*(_Wsol_moins[0][j]*_g);
@@ -157,23 +150,20 @@ void Rusanov::Source()
   }
 }
 
-void Rusanov::TimeScheme(double tfinal) {
-
-  // Schema_VF_1D::Poisson();
-
+void Rusanov::TimeScheme(double tfinal)
+{
   int nbiter = int(ceil(tfinal / _dt));
   double normeL2rho;
   double normeL2u;
 
   ofstream flux_norme;
-  flux_norme.open("EquilibriumFlow1D_norme.txt", ios::out);
+  flux_norme.open("EF1D_Rusanov_norme.txt", ios::out);
 
   for (int iter=0; iter<nbiter; ++iter){
     Euler();
     if (_SFSG == false)
       break;
     Source();
-    // Schema_VF_1D::Poisson();
 
     //Calcul des normes --------------------------------------------
     if (iter % 1000 == 0){
@@ -203,7 +193,7 @@ void Rusanov::TimeScheme(double tfinal) {
     fflush(stdout);
     //--------------------------------------------------------------
   }
-  Schema_VF_1D::SaveSol("EquilibriumFlow1D");
+  Schema_VF_1D::SaveSol("EF1D_Rusanov");
   flux_norme.close();
 }
 
@@ -214,51 +204,96 @@ void Rusanov::TimeScheme(double tfinal) {
 void Relaxation::Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g, double a)
 {
   Schema_VF_1D::Initialize(xmin, xmax, Nx, hx, dt, CI_rho, CI_u, CI_E, gamma, g, a);
-  _Fdg.resize(5);
-  _Fdd.resize(5);
+  _Fdg.resize(3);
+  _Fdd.resize(3);
   _Wdelta.resize(5);
 
   _a = a;
 
   for (int i = 0; i < 5; ++i)
    {
-     _Fdg[i].resize(_Nx+2);
-     _Fdd[i].resize(_Nx+2);
      _Wdelta[i].resize(_Nx+2);
    }
+  for (int i = 0; i < 3; ++i)
+  {
+    _Fdg[i].resize(_Nx+2);
+    _Fdd[i].resize(_Nx+2);
+  }
 }
 
-void Relaxation::UpdateFluxCase1(string sens, int j, double sigma)
+void Relaxation::UpdateFluxCase1(string sens, int j, double sigma, double Sl, double Sr)
 {
+  vector<double> Vl(4,0.),Vll(4,0.),Vr(4,0.);
+  if (sens == "g"){
+    _Fdg[0][j] = _hx/2.*_dt*_Wsol_moins[0][j] + _hx/2.*_dt*_Wsol_moins[0][j];
+    _Fdg[1][j] = _hx/2.*_dt*_Wsol_moins[1][j] + _hx/2.*_dt*_Wsol_moins[1][j];
+    _Fdg[2][j] = _hx/2.*_dt*_Wsol_moins[2][j] + _hx/2.*_dt*_Wsol_moins[2][j];
+  }
 
+  if (sens == "d"){
+    Vl[0] = _Wdelta[0][j-1]*sqrt(1. - 2.*(_Wdelta[4][j] - _Wdelta[4][j-1])/(pow(_Wdelta[1][j-1],2) - pow(_a,2)*pow(_Wdelta[0][j-1],2)));
+    Vll[0] = 1./(2.*_a)*(Sr - Sl*Vl[0]/_Wdelta[0][j-1] - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j]+pow(_a,2)*_Wdelta[0][j]));
+    Vr[0] = 1./(2.*_a)*(Sr - Sl*Vl[0]/_Wdelta[0][j-1] + (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j]+pow(_a,2)*_Wdelta[0][j]));
+
+    Vl[1] = _Wdelta[1][j-1]*Vl[0]/_Wdelta[0][j-1];
+    Vll[1] = sigma;
+    Vr[1] = sigma;
+
+    Vl[3] = _Wdelta[3][j-1] + pow(_a,2)*_Wdelta[0][j-1] - pow(_a,2)*Vl[0];
+    Vll[3] = _Wdelta[3][j-1] + pow(_a,2)*_Wdelta[0][j-1] - pow(_a,2)*Vll[0];
+    Vr[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vr[0];
+
+    Vl[2] = _Wdelta[2][j-1] - pow(_Wdelta[3][j-1],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
+    Vll[2] = _Wdelta[2][j-1] - pow(_Wdelta[3][j-1],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
+    Vr[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
+
+    _Fdg[0][j] = _hx/2.*_dt*_Wsol_moins[0][j] + Sl*(1./Vl[0]) + (sigma-Sl)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[0][j];
+    _Fdg[1][j] = _hx/2.*_dt*_Wsol_moins[1][j] + Sl*(Vl[1]/Vl[0]) + (sigma-Sl)*(Vll[1]/Vll[0]) + (Sr-sigma)*(Vr[1]/Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[1][j];
+    _Fdg[2][j] = _hx/2.*_dt*_Wsol_moins[2][j] + Sl*(Vl[2]+pow(Vl[1],2)/2.)/Vl[0] + (sigma-Sl)*(Vll[2]+pow(Vll[1],2)/2.)/Vll[0] + (Sr-sigma)*(Vr[2]+pow(Vr[1],2)/2.)/Vr[0] + (_hx/2.*_dt-Sr)*_Wsol_moins[2][j];
+
+  }
 }
 
-void Relaxation::UpdateFluxCase2(string sens, int j, double sigma)
+void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, double Sr)
 {
-
+  vector<double> Vl(5,0.),Vll(5,0.),Vr(5,0.);
 }
 
-void Relaxation::UpdateFluxCase3(string sens, int j, double sigma)
+void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, double Sr)
 {
-
+  vector<double> Vl(5,0.),Vll(5,0.),Vr(5,0.);
 }
 
-void Relaxation::UpdateFluxCase4(string sens, int j, double sigma)
+void Relaxation::UpdateFluxCase4(string sens, int j, double sigma, double Sl, double Sr)
 {
-
+  vector<double> Vl(5,0.),Vll(5,0.),Vr(5,0.);
 }
 
 void Relaxation::Flux()
 {
   _Wsol_moins = _Wsol;
-  double sigma_gauche;
-  double sigma_droite;
+  double sigma, Sl, Sr;
+  double bi=0.;
+  vector<double> b;
+
 
   for (int j=0; j < _Nx+2; ++j)
   {
+    b = {abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]-1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]-1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]-1),
+    abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]+1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]+1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]+1)};
+
+    bi = *max_element(begin(b),end(b));
+
+    if (bi*_dt/_hx > 0.5)
+    {
+      cout << "ATTENTION, LA CONDTION CFL N'EST PAS VERIFIÉE !" << endl;
+      cout << "Relancez avec un pas de temps plus petit." << endl;
+      _SFSG = false;
+    }
+
     _Wdelta[0][j] = 1/_Wsol_moins[0][j];
-    _Wdelta[1][j] = _Wsol_moins[1][j]/Wsol_moins[0][j];
-    _Wdelta[2][j] = Wsol_moins[2][j]/Wsol_moins[0][j] - pow(Wsol_moins[1][j],2)/Wsol_moins[0][j];
+    _Wdelta[1][j] = _Wsol_moins[1][j]/_Wsol_moins[0][j];
+    _Wdelta[2][j] = _Wsol_moins[2][j]/_Wsol_moins[0][j] - pow(_Wsol_moins[1][j],2)/_Wsol_moins[0][j];
     _Wdelta[3][j] = _Wsol_moins[0][j];
     _Wdelta[4][j] = (_hx/2+j*_hx)*_g;
   }
@@ -268,29 +303,74 @@ void Relaxation::Flux()
   //Gauche
   for (int j=1; j < _Nx+1; ++j)
   {
-    sigma_gauche = (_Wdelta[1][j]+_Wdelta[1][j+1])*0.5 - (_Wdelta[3][j+1] - _Wdelta[3][j])/(2*_a);
-    if(_Wdelta[1][j]-_a*_Wdelta[0][j] < 0)
-      UpdateFluxCase1("g",j,sigma);
-    else if(_Wdelta[1][j+1]+_a*_Wdelta[0][j+1] < 0)
-      UpdateFluxCase4("g",j,sigma);
-    else if(sigma_gauche > 0)
-      UpdateFluxCase2("g",j,sigma);
+    sigma = (_Wdelta[1][j]+_Wdelta[1][j+1])*0.5 - (_Wdelta[3][j+1] - _Wdelta[3][j])/(2*_a);
+    Sl = _Wdelta[1][j]-_a*_Wdelta[0][j];
+    Sr = _Wdelta[1][j+1]+_a*_Wdelta[0][j+1];
+    if(Sl < 0)
+      UpdateFluxCase1("g",j,sigma,Sl,Sr);
+    else if(Sr < 0)
+      UpdateFluxCase4("g",j,sigma,Sl,Sr);
+    else if(sigma > 0)
+      UpdateFluxCase2("g",j,sigma,Sl,Sr);
     else
-      UpdateFluxCase3("g",j,sigma);
+      UpdateFluxCase3("g",j,sigma,Sl,Sr);
 
-    sigma_droite = (_Wdelta[1][j-1]+_Wdelta[1][j])*0.5 - (_Wdelta[3][j] - _Wdelta[3][j-1])/(2*_a);
-    if(_Wdelta[1][j-1]-_a*_Wdelta[0][j-1] < 0)
-      UpdateFluxCase1("d",j,sigma);
-    else if(_Wdelta[1][j]+_a*_Wdelta[0][j] < 0)
-      UpdateFluxCase4("d",j,sigma);
-    else if(sigma_droite > 0)
-      UpdateFluxCase2("d",j,sigma);
+    sigma = (_Wdelta[1][j-1]+_Wdelta[1][j])*0.5 - (_Wdelta[3][j] - _Wdelta[3][j-1])/(2*_a);
+    Sl = _Wdelta[1][j-1]-_a*_Wdelta[0][j-1];
+    Sr = _Wdelta[1][j]+_a*_Wdelta[0][j];
+    if(Sl < 0)
+      UpdateFluxCase1("d",j,sigma,Sl,Sr);
+    else if(Sr < 0)
+      UpdateFluxCase4("d",j,sigma,Sl,Sr);
+    else if(sigma > 0)
+      UpdateFluxCase2("d",j,sigma,Sl,Sr);
     else
-      UpdateFluxCase3("d",j,sigma);
+      UpdateFluxCase3("d",j,sigma,Sl,Sr);
   }
 }
 
 void Relaxation::TimeScheme(double tfinal)
 {
+  int nbiter = int(ceil(tfinal / _dt));
+  double normeL2rho;
+  double normeL2u;
 
+  ofstream flux_norme;
+  flux_norme.open("EF1D_Relaxation_norme.txt", ios::out);
+
+  for (int iter=0; iter<nbiter; ++iter){
+    Flux();
+    if (_SFSG == false)
+      break;
+
+    //Calcul des normes --------------------------------------------
+    if (iter % 1000 == 0){
+      normeL2rho = 0;
+      normeL2u = 0;
+      for (int j = 0; j < _Nx; ++j) {
+        normeL2rho += (_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)))*(_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)));
+        normeL2u += _Wsol[1][j+1]/_Wsol[0][j+1]*_Wsol[1][j+1]/_Wsol[0][j+1];
+      }
+      normeL2rho = log(sqrt(_hx*normeL2rho));
+      normeL2u = log(sqrt(_hx*normeL2u));
+      flux_norme << _dt*iter << " " << normeL2rho << " " << normeL2u << endl;
+    }
+    //--------------------------------------------------------------
+
+    //Barre de Chargement ------------------------------------------
+    int i_barre;
+    const int p = floor((((double)iter) / ((double)nbiter)) * 100);
+    printf("[");
+    for (i_barre = 0; i_barre <= p; i_barre += 2)
+    printf("*");
+    for (; i_barre <= 100; i_barre += 2)
+    printf("-");
+    printf("] %3d %%", p);
+    for (i_barre = 0; i_barre < 59; ++i_barre)
+    printf("%c", 8);
+    fflush(stdout);
+    //--------------------------------------------------------------
+  }
+  Schema_VF_1D::SaveSol("EF1D_Relaxation");
+  flux_norme.close();
 }
