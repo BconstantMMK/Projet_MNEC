@@ -60,4 +60,5 @@ class Relaxation : public Schema_VF_1D
    void UpdateFluxCase2(std::string sens, int j, double sigma, double Sl, double Sr);
    void UpdateFluxCase3(std::string sens, int j, double sigma, double Sl, double Sr);
    void UpdateFluxCase4(std::string sens, int j, double sigma, double Sl, double Sr);
+   void Advance();
 };

@@ -225,9 +225,9 @@ void Relaxation::UpdateFluxCase1(string sens, int j, double sigma, double Sl, do
 {
   vector<double> Vl(4,0.),Vll(4,0.),Vr(4,0.);
   if (sens == "g"){
-    _Fdg[0][j] = _hx/2.*_dt*_Wsol_moins[0][j] + _hx/2.*_dt*_Wsol_moins[0][j];
-    _Fdg[1][j] = _hx/2.*_dt*_Wsol_moins[1][j] + _hx/2.*_dt*_Wsol_moins[1][j];
-    _Fdg[2][j] = _hx/2.*_dt*_Wsol_moins[2][j] + _hx/2.*_dt*_Wsol_moins[2][j];
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] + _hx/(2.*_dt)*_Wsol_moins[0][j];
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] + _hx/(2.*_dt)*_Wsol_moins[1][j];
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] + _hx/(2.*_dt)*_Wsol_moins[2][j];
   }
 
   if (sens == "d"){
@@ -247,9 +247,9 @@ void Relaxation::UpdateFluxCase1(string sens, int j, double sigma, double Sl, do
     Vll[2] = _Wdelta[2][j-1] - pow(_Wdelta[3][j-1],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
     Vr[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
 
-    _Fdd[0][j] = -_hx/2.*_dt*_Wsol_moins[0][j] + Sl*(1./Vl[0]) + (sigma-Sl)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[0][j];
-    _Fdd[1][j] = -_hx/2.*_dt*_Wsol_moins[1][j] + Sl*(Vl[1]/Vl[0]) + (sigma-Sl)*(Vll[1]/Vll[0]) + (Sr-sigma)*(Vr[1]/Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[1][j];
-    _Fdd[2][j] = -_hx/2.*_dt*_Wsol_moins[2][j] + Sl*(Vl[2]+pow(Vl[1],2)/2.)/Vl[0] + (sigma-Sl)*(Vll[2]+pow(Vll[1],2)/2.)/Vll[0] + (Sr-sigma)*(Vr[2]+pow(Vr[1],2)/2.)/Vr[0] + (_hx/2.*_dt-Sr)*_Wsol_moins[2][j];
+    _Fdd[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + Sl*(1./Vl[0]) + (sigma-Sl)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[0][j];
+    _Fdd[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + Sl*(Vl[1]/Vl[0]) + (sigma-Sl)*(Vll[1]/Vll[0]) + (Sr-sigma)*(Vr[1]/Vr[0]) + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[1][j];
+    _Fdd[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + Sl*(Vl[2]+pow(Vl[1],2)/2.)/Vl[0] + (sigma-Sl)*(Vll[2]+pow(Vll[1],2)/2.)/Vll[0] + (Sr-sigma)*(Vr[2]+pow(Vr[1],2)/2.)/Vr[0] + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[2][j];
   }
 }
 
@@ -260,7 +260,7 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
 
   if (sens == "g"){
 
-    alpha = _Wdelta[1][j+1] - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j]);
+    alpha = Sr - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j]);
 
     Vl[0] = 1./(2.*_a)*(-Sl+(_Wdelta[4][j+1] - _Wdelta[4][j])/Sl + (abs(alpha)/alpha)*sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/Sl,2)+pow(alpha,2)));
 
@@ -270,14 +270,14 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
 
     Vl[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = _hx/2.*_dt*_Wsol_moins[0][j] - ((Sl+_hx/2.*_dt)*_Wsol_moins[0][j] - Sl*(1./Vl[0]));
-    _Fdg[1][j] = _hx/2.*_dt*_Wsol_moins[1][j] - ((Sl+_hx/2.*_dt)*_Wsol_moins[1][j] - Sl*(Vl[1]/Vl[0]));
-    _Fdg[2][j] = _hx/2.*_dt*_Wsol_moins[2][j] - ((Sl+_hx/2.*_dt)*_Wsol_moins[2][j] - Sl*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]));
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[0][j] - Sl*(1./Vl[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[1][j] - Sl*(Vl[1]/Vl[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[2][j] - Sl*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]));
   }
 
   if (sens == "d"){
 
-    alpha = _Wdelta[1][j] - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1]);
+    alpha = Sr - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1]);
 
     Vll[0] = 1./(2.*_a)*(alpha+(_Wdelta[4][j] - _Wdelta[4][j-1])/alpha + sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/alpha,2)+pow(Sl,2)));
     Vr[0]  = 1./(2.*_a)*(Sr+((_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1])/_a)+(_Wdelta[4][j] - _Wdelta[4][j-1])/alpha + sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/alpha,2)+pow(Sl,2)));
@@ -285,21 +285,60 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
     Vll[1] = sigma;
     Vr[1]  = sigma;
 
-    Vll[3] = _Wdelta[3][j-1] + pow(_a,2)*_Wdelta[0][j-1] - pow(_a,2)*Vll[0];
+    Vll[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vll[0];
     Vr[3]  = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vr[0];
 
-    Vll[2] = _Wdelta[2][j-1] - pow(_Wdelta[3][j-1],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
+    Vll[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
     Vr[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
 
-    _Fdd[0][j] = -_hx/2.*_dt*_Wsol_moins[0][j] + (sigma)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[0][j];
-    _Fdd[1][j] = -_hx/2.*_dt*_Wsol_moins[1][j] + (sigma)*(Vll[1]/Vll[0]) + (Sr-sigma)*(Vr[1]/Vr[0]) + (_hx/2.*_dt-Sr)*_Wsol_moins[1][j];
-    _Fdd[2][j] = -_hx/2.*_dt*_Wsol_moins[2][j] + (sigma)*(Vll[2]+pow(Vll[1],2)/2.)/Vll[0] + (Sr-sigma)*(Vr[2]+pow(Vr[1],2)/2.)/Vr[0] + (_hx/2.*_dt-Sr)*_Wsol_moins[2][j];
+    _Fdd[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + (sigma)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[0][j];
+    _Fdd[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + (sigma)*(Vll[1]/Vll[0]) + (Sr-sigma)*(Vr[1]/Vr[0]) + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[1][j];
+    _Fdd[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + (sigma)*(Vll[2]+pow(Vll[1],2)/2.)/Vll[0] + (Sr-sigma)*(Vr[2]+pow(Vr[1],2)/2.)/Vr[0] + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[2][j];
   }
 }
 
 void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, double Sr)
 {
-  vector<double> Vl(5,0.),Vll(5,0.),Vr(5,0.);
+  vector<double> Vr(5,0.),Vrr(5,0.),Vl(5,0.);
+  double beta;
+
+  if (sens == "g"){
+
+    beta = Sl - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j]);
+
+    Vrr[0] = 1./(2.*_a)*(-beta+(_Wdelta[4][j+1] - _Wdelta[4][j])/beta + sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/beta,2)+pow(Sr,2)));
+    Vl[0]  = 1./(2.*_a)*(-Sl-((_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a)+(_Wdelta[4][j+1] - _Wdelta[4][j])/beta + sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/beta,2)+pow(Sr,2)));
+
+    Vrr[1] = sigma;
+    Vl[1]  = sigma;
+
+    Vrr[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vrr[0];
+    Vl[3]  = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vl[0];
+
+    Vrr[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vrr[3],2)/(2*pow(_a,2));
+    Vl[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
+
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) -sigma*(1./Vrr[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) -sigma*(Vrr[1]/Vrr[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) -sigma*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]));
+  }
+
+  if (sens == "d"){
+
+    beta = Sl - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1]);
+
+    Vr[0] = 1./(2.*_a)*(Sr+(_Wdelta[4][j] - _Wdelta[4][j-1])/Sr - (abs(beta)/beta)*sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/Sr,2)+pow(beta,2)));
+
+    Vr[1] = _Wdelta[1][j] + _a*_Wdelta[0][j] - _a*Vr[0];
+
+    Vr[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vr[0];
+
+    Vr[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
+
+    _Fdg[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + Sr*(1./Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[0][j];
+    _Fdg[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + Sr*(Vr[1]/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[1][j];
+    _Fdg[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + Sr*((Vr[2]+pow(Vr[1],2))/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[2][j];
+  }
 }
 
 void Relaxation::UpdateFluxCase4(string sens, int j, double sigma, double Sl, double Sr)
@@ -323,15 +362,15 @@ void Relaxation::UpdateFluxCase4(string sens, int j, double sigma, double Sl, do
     Vrr[2] = _Wdelta[2][j+1] - pow(_Wdelta[3][j+1],2)/(2*pow(_a,2)) + pow(Vrr[3],2)/(2*pow(_a,2));
     Vl[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = _hx/2.*_dt*_Wsol_moins[0][j] - (Sl+(_hx/2.*_dt)*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) + (Sr-sigma)*(1./Vrr[0]) -sigma*(1./Vr[0]));
-    _Fdg[1][j] = _hx/2.*_dt*_Wsol_moins[1][j] - (Sl+(_hx/2.*_dt)*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) + (Sr-sigma)*(Vrr[1]/Vrr[0]) -sigma*(Vr[1]/Vr[0]));
-    _Fdg[2][j] = _hx/2.*_dt*_Wsol_moins[2][j] - (Sl+(_hx/2.*_dt)*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) + (Sr-sigma)*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]) -sigma*((Vl[2]+pow(Vr[1],2)/2.)/Vr[0]));
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) + (Sr-sigma)*(1./Vrr[0]) -sigma*(1./Vr[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) + (Sr-sigma)*(Vrr[1]/Vrr[0]) -sigma*(Vr[1]/Vr[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) + (Sr-sigma)*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]) -sigma*((Vl[2]+pow(Vr[1],2)/2.)/Vr[0]));
   }
 
   if (sens == "d"){
-    _Fdg[0][j] = -_hx/2.*_dt*_Wsol_moins[0][j] + _hx/2.*_dt*_Wsol_moins[0][j];
-    _Fdg[1][j] = -_hx/2.*_dt*_Wsol_moins[1][j] + _hx/2.*_dt*_Wsol_moins[1][j];
-    _Fdg[2][j] = -_hx/2.*_dt*_Wsol_moins[2][j] + _hx/2.*_dt*_Wsol_moins[2][j];
+    _Fdg[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + _hx/(2.*_dt)*_Wsol_moins[0][j];
+    _Fdg[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + _hx/(2.*_dt)*_Wsol_moins[1][j];
+    _Fdg[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + _hx/(2.*_dt)*_Wsol_moins[2][j];
   }
 }
 
@@ -395,6 +434,17 @@ void Relaxation::Flux()
   }
 }
 
+void Relaxation::Advance()
+{
+  for (int i=0; i<3; ++i)
+  {
+    for (int j=1; j<_Nx+1; ++j)
+    {
+      _Wsol[i][j] = _Wsol_moins[i][j] + (_hx/_dt)*(_Fdg[i][j]-_Fdd[i][j]);
+    }
+  }
+}
+
 void Relaxation::TimeScheme(double tfinal)
 {
   int nbiter = int(ceil(tfinal / _dt));
@@ -406,6 +456,7 @@ void Relaxation::TimeScheme(double tfinal)
 
   for (int iter=0; iter<nbiter; ++iter){
     Flux();
+    Advance();
     if (_SFSG == false)
       break;
 
