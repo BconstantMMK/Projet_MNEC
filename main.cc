@@ -15,18 +15,18 @@ int main(int argc, char** argv)
   double hx = (xmax-xmin)/(Nx+1.);
 
   double tfinal = 50.;
-  double dt = 0.001;
+  double dt = 0.0001;
 
   double gamma = 1.4;
-  double g = 10;
+  double g = 10.;
 
-  double a = 1.;
+  double a = 10.;
 
   double CI_rho = 10.;
-  double CI_u = 0.001;
+  double CI_u = 0.01;
   double CI_E = 1/(gamma-1.) + CI_u*CI_u/2.;
 
-  int schema = 1;
+  int schema = 2;
   //1 -> Rusanov
   //2 -> Relaxation
 

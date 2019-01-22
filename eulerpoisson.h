@@ -30,7 +30,7 @@ class Schema_VF_1D
   // Constructeur : Initialiser xmin, xmax, Nx, hx, dt, _Wsol_0
   virtual ~Schema_VF_1D();
 
-  void Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g, double a);
+  virtual void Initialize(double xmin, double xmax, int Nx, double hx, double dt, double CI_rho, double CI_u, double CI_E, double gamma, double g, double a);
   void SaveSol(const std::string& name_file);
   void Poisson();
   void UpdateCL();

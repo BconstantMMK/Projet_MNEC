@@ -38,6 +38,15 @@ void Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx, doubl
       _Gravity[j] = j*_hx*g;
     }
 
+    _Wsol[0][0] = CI_rho;
+    _Wsol[1][0] = CI_rho*CI_u;
+    _Wsol[2][0] = CI_rho*CI_E;
+
+    _Wsol[0][_Nx+1] = CI_rho;
+    _Wsol[1][_Nx+1] = CI_rho*CI_u;
+    _Wsol[2][_Nx+1] = CI_rho*CI_E;
+
+
     _LapMat1D.resize(3);
     double alpha = -2./(_hx * _hx);
     double beta = 1/(_hx * _hx);
@@ -59,18 +68,20 @@ void Schema_VF_1D::Initialize(double xmin, double xmax, int Nx, double hx, doubl
 
 void Schema_VF_1D::UpdateCL()
 {
-  //CL gauche : u=0 / dx(rho) = -rho_eq*g / dx(E) = gE - g/(gamma-1)
-  _Wsol_moins[0][0] = _CI_rho;
-  // _Wsol_moins[0][0] = _Wsol_moins[0][1] - _hx*_g*_CI_rho;
+  //CL gauche
+  // _Wsol_moins[0][0] = _CI_rho; //Dirichlet
+  _Wsol_moins[0][0] = _Wsol_moins[0][1]*(1+_g*_hx); // Neumann
   _Wsol_moins[1][0] = 0.;
-  _Wsol_moins[2][0] = 1./(1+(_g*_hx))*(_Wsol_moins[2][1]/_Wsol_moins[0][1]+_g*_hx/(_gamma-1));
+  _Wsol_moins[2][0] = (1-_hx*_g)*(_Wsol_moins[2][1] + _g*_hx/(_gamma-1));
+  // _Wsol_moins[2][0] = (1/(_gamma-1)); //Dirichlet
   _Wsol_moins[2][0] *= _Wsol_moins[0][0];
 
-  //CL droite : u=0 / dx(rho) = -rho_eq*g / dx(E) = gE - g/(gamma-1)
-  _Wsol_moins[0][_Nx+1] = _CI_rho*exp(-_g);
-  // _Wsol_moins[0][_Nx+1] = _Wsol_moins[0][_Nx] - _hx*_g*_CI_rho*exp(-_g);
+  //CL droite
+  // _Wsol_moins[0][_Nx+1] = _CI_rho*exp(-_g); //Dirichlet
+  _Wsol_moins[0][_Nx+1] = _Wsol_moins[0][_Nx]*(1-_g*_hx);
   _Wsol_moins[1][_Nx+1] = 0.;
-  _Wsol_moins[2][_Nx+1] = 1./(1-(_g*_hx))*(_Wsol_moins[2][_Nx]/_Wsol_moins[0][_Nx]-_g*_hx/(_gamma-1));
+  _Wsol_moins[2][_Nx+1] = (1+_hx*_g)*(_Wsol_moins[2][1] - _g*_hx/(_gamma-1)); // Neumann
+  // _Wsol_moins[2][_Nx+1] = (1/(_gamma-1)); //Dirichlet
   _Wsol_moins[2][_Nx+1] *= _Wsol_moins[0][_Nx+1];
 }
 
@@ -144,9 +155,14 @@ void Rusanov::Source()
 {
   _Wsol_moins = _Wsol;
 
+  Schema_VF_1D::UpdateCL();
+
   for (int j = 1; j < _Nx+1; ++j){
     _Wsol[1][j] = _Wsol_moins[1][j] - _dt*(_Wsol_moins[0][j]*_g);
     _Wsol[2][j] = _Wsol_moins[2][j] - _dt*(_Wsol_moins[1][j]*_g);
+    // _Wsol[1][j] = _Wsol_moins[1][j] - _dt*(_Wsol_moins[0][j]*abs(_Gravity[j-1]-_Gravity[j])/_hx);
+    // _Wsol[2][j] = _Wsol_moins[2][j] - _dt*(_Wsol_moins[1][j]*abs(_Gravity[j-1]-_Gravity[j])/_hx);
+    // cout << abs(_Gravity[j-1]-_Gravity[j])/_hx << endl;
   }
 }
 
@@ -167,14 +183,14 @@ void Rusanov::TimeScheme(double tfinal)
 
     //Calcul des normes --------------------------------------------
     if (iter % 1000 == 0){
-      normeL2rho = 0;
-      normeL2u = 0;
+      normeL2rho = 0.;
+      normeL2u = 0.;
       for (int j = 0; j < _Nx; ++j) {
         normeL2rho += (_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)))*(_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)));
-        normeL2u += _Wsol[1][j+1]/_Wsol[0][j+1]*_Wsol[1][j+1]/_Wsol[0][j+1];
+        normeL2u += (_Wsol[1][j+1]/_Wsol[0][j+1])*(_Wsol[1][j+1]/_Wsol[0][j+1]);
       }
-      normeL2rho = log(sqrt(_hx*normeL2rho));
-      normeL2u = log(sqrt(_hx*normeL2u));
+      normeL2rho = log10(sqrt(_hx*normeL2rho));
+      normeL2u = log10(sqrt(_hx*normeL2u));
       flux_norme << _dt*iter << " " << normeL2rho << " " << normeL2u << endl;
     }
     //--------------------------------------------------------------
@@ -224,10 +240,13 @@ void Relaxation::Initialize(double xmin, double xmax, int Nx, double hx, double 
 void Relaxation::UpdateFluxCase1(string sens, int j, double sigma, double Sl, double Sr)
 {
   vector<double> Vl(4,0.),Vll(4,0.),Vr(4,0.);
+
+  // cout << "case 1" << endl;
+
   if (sens == "g"){
-    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] + _hx/(2.*_dt)*_Wsol_moins[0][j];
-    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] + _hx/(2.*_dt)*_Wsol_moins[1][j];
-    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] + _hx/(2.*_dt)*_Wsol_moins[2][j];
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - _hx/(2.*_dt)*_Wsol_moins[0][j];
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - _hx/(2.*_dt)*_Wsol_moins[1][j];
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - _hx/(2.*_dt)*_Wsol_moins[2][j];
   }
 
   if (sens == "d"){
@@ -255,29 +274,41 @@ void Relaxation::UpdateFluxCase1(string sens, int j, double sigma, double Sl, do
 
 void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, double Sr)
 {
-  vector<double> Vl(5,0.),Vll(5,0.),Vr(5,0.);
+  vector<double> Vl(4,0.),Vll(4,0.),Vr(4,0.);
   double alpha;
+
+  // cout << "case 2" << endl;
 
   if (sens == "g"){
 
-    alpha = Sr - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j]);
+    alpha = Sr - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a;
+    if (abs(alpha) < 0.1)
+    {
+      cout << abs(alpha) << endl;
+      cout << "Attention, la condition du cas 2 n'est pas respectée !" << endl;
+    }
 
     Vl[0] = 1./(2.*_a)*(-Sl+(_Wdelta[4][j+1] - _Wdelta[4][j])/Sl + (abs(alpha)/alpha)*sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/Sl,2)+pow(alpha,2)));
 
-    Vl[1] = sigma*Vl[0]/(1./(2.*_a)*(alpha+(_Wdelta[4][j+1] - _Wdelta[4][j])/alpha + (abs(alpha)/alpha)*sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/alpha,2)+pow(Sl,2))));
+    Vl[1] = sigma*Vl[0]/(1./(2.*_a)*(alpha+(_Wdelta[4][j+1] - _Wdelta[4][j])/alpha + sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/alpha,2)+pow(Sl,2))));
 
     Vl[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vl[0];
 
     Vl[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[0][j] - Sl*(1./Vl[0]));
-    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[1][j] - Sl*(Vl[1]/Vl[0]));
-    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[2][j] - Sl*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]));
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[0][j] - Sl*(1./Vl[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[1][j] - Sl*(Vl[1]/Vl[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[2][j] - Sl*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]));
   }
 
   if (sens == "d"){
 
-    alpha = Sr - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1]);
+    alpha = Sr - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1])/_a;
+    if (abs(alpha) < 0.1)
+    {
+      cout << abs(alpha) << endl;
+      cout << "Attention, la condition du cas 2 n'est pas respectée !" << endl;
+    }
 
     Vll[0] = 1./(2.*_a)*(alpha+(_Wdelta[4][j] - _Wdelta[4][j-1])/alpha + sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/alpha,2)+pow(Sl,2)));
     Vr[0]  = 1./(2.*_a)*(Sr+((_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1])/_a)+(_Wdelta[4][j] - _Wdelta[4][j-1])/alpha + sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/alpha,2)+pow(Sl,2)));
@@ -285,10 +316,10 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
     Vll[1] = sigma;
     Vr[1]  = sigma;
 
-    Vll[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vll[0];
+    Vll[3] = _Wdelta[3][j-1] + pow(_a,2)*_Wdelta[0][j-1] - pow(_a,2)*Vll[0];
     Vr[3]  = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vr[0];
 
-    Vll[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
+    Vll[2] = _Wdelta[2][j-1] - pow(_Wdelta[3][j-1],2)/(2*pow(_a,2)) + pow(Vll[3],2)/(2*pow(_a,2));
     Vr[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
 
     _Fdd[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + (sigma)*(1./Vll[0]) + (Sr-sigma)*(1./Vr[0]) + ((_hx/(2.*_dt))-Sr)*_Wsol_moins[0][j];
@@ -299,12 +330,19 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
 
 void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, double Sr)
 {
-  vector<double> Vr(5,0.),Vrr(5,0.),Vl(5,0.);
+  vector<double> Vr(4,0.),Vrr(4,0.),Vl(4,0.);
   double beta;
+
+  // cout << "case 3" << endl;
 
   if (sens == "g"){
 
-    beta = Sl - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j]);
+    beta = Sl - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a;
+    if (abs(beta) < 0.1)
+    {
+      cout << abs(beta) << endl;
+      cout << "Attention, la condition du cas 3 n'est pas respectée !" << endl;
+    }
 
     Vrr[0] = 1./(2.*_a)*(-beta+(_Wdelta[4][j+1] - _Wdelta[4][j])/beta + sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/beta,2)+pow(Sr,2)));
     Vl[0]  = 1./(2.*_a)*(-Sl-((_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a)+(_Wdelta[4][j+1] - _Wdelta[4][j])/beta + sqrt(pow((_Wdelta[4][j+1] - _Wdelta[4][j])/beta,2)+pow(Sr,2)));
@@ -312,20 +350,25 @@ void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, do
     Vrr[1] = sigma;
     Vl[1]  = sigma;
 
-    Vrr[3] = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vrr[0];
+    Vrr[3] = _Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - pow(_a,2)*Vrr[0];
     Vl[3]  = _Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - pow(_a,2)*Vl[0];
 
-    Vrr[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vrr[3],2)/(2*pow(_a,2));
+    Vrr[2] = _Wdelta[2][j+1] - pow(_Wdelta[3][j+1],2)/(2*pow(_a,2)) + pow(Vrr[3],2)/(2*pow(_a,2));
     Vl[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) -sigma*(1./Vrr[0]));
-    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) -sigma*(Vrr[1]/Vrr[0]));
-    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - (Sl+(_hx/(2.*_dt))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) -sigma*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]));
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) -sigma*(1./Vrr[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) -sigma*(Vrr[1]/Vrr[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) -sigma*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]));
   }
 
   if (sens == "d"){
 
-    beta = Sl - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1]);
+    beta = Sl - (_Wdelta[3][j] + pow(_a,2)*_Wdelta[0][j] - _Wdelta[3][j-1] - pow(_a,2)*_Wdelta[0][j-1])/_a;
+    if (abs(beta) < 0.1)
+    {
+      cout << abs(beta) << endl;
+      cout << "Attention, la condition du cas 3 n'est pas respectée !" << endl;
+    }
 
     Vr[0] = 1./(2.*_a)*(Sr+(_Wdelta[4][j] - _Wdelta[4][j-1])/Sr - (abs(beta)/beta)*sqrt(pow((_Wdelta[4][j] - _Wdelta[4][j-1])/Sr,2)+pow(beta,2)));
 
@@ -335,18 +378,20 @@ void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, do
 
     Vr[2] = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vr[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + Sr*(1./Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[0][j];
-    _Fdg[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + Sr*(Vr[1]/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[1][j];
-    _Fdg[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + Sr*((Vr[2]+pow(Vr[1],2))/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[2][j];
+    _Fdd[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + Sr*(1./Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[0][j];
+    _Fdd[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + Sr*(Vr[1]/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[1][j];
+    _Fdd[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + Sr*((Vr[2]+pow(Vr[1],2)/2.)/Vr[0]) + (_hx/(2.*_dt)-Sr)*_Wsol_moins[2][j];
   }
 }
 
 void Relaxation::UpdateFluxCase4(string sens, int j, double sigma, double Sl, double Sr)
 {
-  vector<double> Vr(5,0.),Vrr(5,0.),Vl(5,0.);
+  vector<double> Vr(4,0.),Vrr(4,0.),Vl(4,0.);
+
+  // cout << "case 4" << endl;
 
   if (sens == "g"){
-    Vr[0]  = _Wdelta[0][j+1]*sqrt(1. - 2.*(_Wdelta[4][j+1] - _Wdelta[4][j])/(pow(_Wdelta[1][j+1],2) - pow(_a,2)*pow(_Wdelta[0][j+1],2)));
+    Vr[0]  = _Wdelta[0][j+1]*sqrt(1. + 2.*(_Wdelta[4][j+1] - _Wdelta[4][j])/(pow(_Wdelta[1][j+1],2) - pow(_a,2)*pow(_Wdelta[0][j+1],2)));
     Vrr[0] = 1./(2.*_a)*(-Sl - Sr*Vr[0]/_Wdelta[0][j+1] + (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a);
     Vl[0]  = 1./(2.*_a)*(-Sl - Sr*Vr[0]/_Wdelta[0][j+1] - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a);
 
@@ -362,72 +407,91 @@ void Relaxation::UpdateFluxCase4(string sens, int j, double sigma, double Sl, do
     Vrr[2] = _Wdelta[2][j+1] - pow(_Wdelta[3][j+1],2)/(2*pow(_a,2)) + pow(Vrr[3],2)/(2*pow(_a,2));
     Vl[2]  = _Wdelta[2][j] - pow(_Wdelta[3][j],2)/(2*pow(_a,2)) + pow(Vl[3],2)/(2*pow(_a,2));
 
-    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) + (Sr-sigma)*(1./Vrr[0]) -sigma*(1./Vr[0]));
-    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) + (Sr-sigma)*(Vrr[1]/Vrr[0]) -sigma*(Vr[1]/Vr[0]));
-    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - ((Sl+(_hx/(2.*_dt)))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) + (Sr-sigma)*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]) -sigma*((Vl[2]+pow(Vr[1],2)/2.)/Vr[0]));
+    _Fdg[0][j] = _hx/(2.*_dt)*_Wsol_moins[0][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[0][j] + (sigma-Sl)*(1./Vl[0]) + (Sr-sigma)*(1./Vrr[0]) -sigma*(1./Vr[0]));
+    _Fdg[1][j] = _hx/(2.*_dt)*_Wsol_moins[1][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[1][j] + (sigma-Sl)*(Vl[1]/Vl[0]) + (Sr-sigma)*(Vrr[1]/Vrr[0]) -sigma*(Vr[1]/Vr[0]));
+    _Fdg[2][j] = _hx/(2.*_dt)*_Wsol_moins[2][j] - ((Sl+_hx/(2.*_dt))*_Wsol_moins[2][j] + (sigma-Sl)*((Vl[2]+pow(Vl[1],2)/2.)/Vl[0]) + (Sr-sigma)*((Vrr[2]+pow(Vrr[1],2)/2.)/Vrr[0]) -sigma*((Vl[2]+pow(Vr[1],2)/2.)/Vr[0]));
   }
 
   if (sens == "d"){
-    _Fdg[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + _hx/(2.*_dt)*_Wsol_moins[0][j];
-    _Fdg[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + _hx/(2.*_dt)*_Wsol_moins[1][j];
-    _Fdg[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + _hx/(2.*_dt)*_Wsol_moins[2][j];
+    _Fdd[0][j] = -_hx/(2.*_dt)*_Wsol_moins[0][j] + _hx/(2.*_dt)*_Wsol_moins[0][j];
+    _Fdd[1][j] = -_hx/(2.*_dt)*_Wsol_moins[1][j] + _hx/(2.*_dt)*_Wsol_moins[1][j];
+    _Fdd[2][j] = -_hx/(2.*_dt)*_Wsol_moins[2][j] + _hx/(2.*_dt)*_Wsol_moins[2][j];
   }
 }
 
 void Relaxation::Flux()
 {
   _Wsol_moins = _Wsol;
+  Schema_VF_1D::UpdateCL();
+
   double sigma, Sl, Sr;
   double bi=0.;
+  double K=0;
   vector<double> b;
-
 
   for (int j=0; j < _Nx+2; ++j)
   {
-    b = {abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]-1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]-1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]-1),
-    abs(_Wsol_moins[1][j]/_Wsol_moins[0][j]+1),abs(_Wsol_moins[1][j-1]/_Wsol_moins[0][j-1]+1),abs(_Wsol_moins[1][j+1]/_Wsol_moins[0][j+1]+1)};
-
-    bi = *max_element(begin(b),end(b));
-
-    if (bi*_dt/_hx > 0.5)
-    {
-      cout << "ATTENTION, LA CONDTION CFL N'EST PAS VERIFIÉE !" << endl;
-      cout << "Relancez avec un pas de temps plus petit." << endl;
-      _SFSG = false;
-    }
-
-    _Wdelta[0][j] = 1/_Wsol_moins[0][j];
+    _Wdelta[0][j] = 1./_Wsol_moins[0][j];
     _Wdelta[1][j] = _Wsol_moins[1][j]/_Wsol_moins[0][j];
-    _Wdelta[2][j] = _Wsol_moins[2][j]/_Wsol_moins[0][j] - pow(_Wsol_moins[1][j],2)/_Wsol_moins[0][j];
+    _Wdelta[2][j] = _Wsol_moins[2][j]/_Wsol_moins[0][j] - (pow(_Wsol_moins[1][j],2)/pow(_Wsol_moins[0][j],2))/2.;
     _Wdelta[3][j] = _Wsol_moins[0][j];
     _Wdelta[4][j] = (_hx/2+j*_hx)*_g;
   }
 
-  Schema_VF_1D::UpdateCL();
-
-  //Gauche
   for (int j=1; j < _Nx+1; ++j)
   {
-    sigma = (_Wdelta[1][j]+_Wdelta[1][j+1])*0.5 - (_Wdelta[3][j+1] - _Wdelta[3][j])/(2*_a);
+    K = 1.;
+    _a = K*max(_Wsol_moins[0][j],_Wsol_moins[0][j+1]);
     Sl = _Wdelta[1][j]-_a*_Wdelta[0][j];
     Sr = _Wdelta[1][j+1]+_a*_Wdelta[0][j+1];
-    if(Sl < 0)
-      UpdateFluxCase1("g",j,sigma,Sl,Sr);
-    else if(Sr < 0)
-      UpdateFluxCase4("g",j,sigma,Sl,Sr);
-    else if(sigma > 0)
+    while ((Sl > 0) || (Sr <0))
+    {
+      K+=0.01;
+      _a = K*max(_Wsol_moins[0][j],_Wsol_moins[0][j+1]);
+      Sl = _Wdelta[1][j]-_a*_Wdelta[0][j];
+      Sr = _Wdelta[1][j+1]+_a*_Wdelta[0][j+1];
+    }
+    sigma = (_Wdelta[1][j]+_Wdelta[1][j+1])*0.5 - (_Wdelta[3][j+1] - _Wdelta[3][j])/(2*_a);
+    // if(Sl > 0){
+    //   UpdateFluxCase1("g",j,sigma,Sl,Sr);
+    //   if (min(pow(_Wdelta[1][j+1],2)-pow(_a,2)*pow(_Wdelta[0][j+1],2), pow(_Wdelta[1][j],2)-pow(_a,2)*pow(_Wdelta[0][j],2)) < 2*0.1)
+    //     cout << "Attention, la condition pour le cas 1 n'est pas vérifiée" << endl;
+    // }
+    // else if(Sr < 0)
+    //   UpdateFluxCase4("g",j,sigma,Sl,Sr);
+    // else if(sigma > 0)
+    //   UpdateFluxCase2("g",j,sigma,Sl,Sr);
+    // else
+    //   UpdateFluxCase3("g",j,sigma,Sl,Sr);
+    if(sigma > 0)
       UpdateFluxCase2("g",j,sigma,Sl,Sr);
     else
       UpdateFluxCase3("g",j,sigma,Sl,Sr);
 
-    sigma = (_Wdelta[1][j-1]+_Wdelta[1][j])*0.5 - (_Wdelta[3][j] - _Wdelta[3][j-1])/(2*_a);
+    K = 1.;
+    _a = K*max(_Wsol_moins[0][j-1],_Wsol_moins[0][j]);
     Sl = _Wdelta[1][j-1]-_a*_Wdelta[0][j-1];
     Sr = _Wdelta[1][j]+_a*_Wdelta[0][j];
-    if(Sl < 0)
-      UpdateFluxCase1("d",j,sigma,Sl,Sr);
-    else if(Sr < 0)
-      UpdateFluxCase4("d",j,sigma,Sl,Sr);
-    else if(sigma > 0)
+    while ((Sl > 0) || (Sr <0))
+    {
+      K+=0.01;
+      _a = K*max(_Wsol_moins[0][j-1],_Wsol_moins[0][j]);
+      Sl = _Wdelta[1][j-1]-_a*_Wdelta[0][j-1];
+      Sr = _Wdelta[1][j]+_a*_Wdelta[0][j];
+    }
+    sigma = (_Wdelta[1][j-1]+_Wdelta[1][j])*0.5 - (_Wdelta[3][j] - _Wdelta[3][j-1])/(2*_a);
+    // if(Sl > 0){
+    //   UpdateFluxCase1("d",j,sigma,Sl,Sr);
+    //   if (min(pow(_Wdelta[1][j],2)-pow(_a,2)*pow(_Wdelta[0][j],2), pow(_Wdelta[1][j-1],2)-pow(_a,2)*pow(_Wdelta[0][j-1],2)) < 2*0.1)
+    //     cout << "Attention, la condition pour le cas 1 n'est pas vérifiée" << endl;
+    // }
+    // else if(Sr < 0)
+    //   UpdateFluxCase4("d",j,sigma,Sl,Sr);
+    // else if(sigma > 0)
+    //   UpdateFluxCase2("d",j,sigma,Sl,Sr);
+    // else
+    //   UpdateFluxCase3("d",j,sigma,Sl,Sr);
+    if(sigma > 0)
       UpdateFluxCase2("d",j,sigma,Sl,Sr);
     else
       UpdateFluxCase3("d",j,sigma,Sl,Sr);
@@ -440,7 +504,7 @@ void Relaxation::Advance()
   {
     for (int j=1; j<_Nx+1; ++j)
     {
-      _Wsol[i][j] = _Wsol_moins[i][j] + (_hx/_dt)*(_Fdg[i][j]-_Fdd[i][j]);
+      _Wsol[i][j] = _Wsol_moins[i][j] - (_dt/_hx)*(_Fdg[i][j]-_Fdd[i][j]);
     }
   }
 }
@@ -462,14 +526,14 @@ void Relaxation::TimeScheme(double tfinal)
 
     //Calcul des normes --------------------------------------------
     if (iter % 1000 == 0){
-      normeL2rho = 0;
-      normeL2u = 0;
+      normeL2rho = 0.;
+      normeL2u = 0.;
       for (int j = 0; j < _Nx; ++j) {
         normeL2rho += (_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)))*(_Wsol[0][j+1]-10*exp(-_g*(_hx/2+j*_hx)));
-        normeL2u += _Wsol[1][j+1]/_Wsol[0][j+1]*_Wsol[1][j+1]/_Wsol[0][j+1];
+        normeL2u += (_Wsol[1][j+1]/_Wsol[0][j+1])*(_Wsol[1][j+1]/_Wsol[0][j+1]);
       }
-      normeL2rho = log(sqrt(_hx*normeL2rho));
-      normeL2u = log(sqrt(_hx*normeL2u));
+      normeL2rho = log10(sqrt(_hx*normeL2rho));
+      normeL2u = log10(sqrt(_hx*normeL2u));
       flux_norme << _dt*iter << " " << normeL2rho << " " << normeL2u << endl;
     }
     //--------------------------------------------------------------
