@@ -277,8 +277,6 @@ void Relaxation::UpdateFluxCase2(string sens, int j, double sigma, double Sl, do
   vector<double> Vl(4,0.),Vll(4,0.),Vr(4,0.);
   double alpha;
 
-  // cout << "case 2" << endl;
-
   if (sens == "g"){
 
     alpha = Sr - (_Wdelta[3][j+1] + pow(_a,2)*_Wdelta[0][j+1] - _Wdelta[3][j] - pow(_a,2)*_Wdelta[0][j])/_a;
@@ -332,8 +330,6 @@ void Relaxation::UpdateFluxCase3(string sens, int j, double sigma, double Sl, do
 {
   vector<double> Vr(4,0.),Vrr(4,0.),Vl(4,0.);
   double beta;
-
-  // cout << "case 3" << endl;
 
   if (sens == "g"){
 
@@ -438,7 +434,26 @@ void Relaxation::Flux()
     _Wdelta[4][j] = (_hx/2+j*_hx)*_g;
   }
 
-  for (int j=1; j < _Nx+1; ++j)
+  K = 1.;
+  _a = K*max(_Wsol_moins[0][0],_Wsol_moins[0][1]);
+  Sl = _Wdelta[1][0]-_a*_Wdelta[0][0];
+  Sr = _Wdelta[1][1]+_a*_Wdelta[0][1];
+  while ((Sl > 0) || (Sr <0))
+  {
+    K+=0.0001;
+    _a = K*max(_Wsol_moins[0][0],_Wsol_moins[0][1]);
+    Sl = _Wdelta[1][0]-_a*_Wdelta[0][0];
+    Sr = _Wdelta[1][1]+_a*_Wdelta[0][1];
+  }
+  sigma = (_Wdelta[1][0]+_Wdelta[1][1])*0.5 - (_Wdelta[3][1] - _Wdelta[3][0])/(2*_a);
+  if(sigma > 0){
+    UpdateFluxCase2("d",1,sigma,Sl,Sr);
+  }
+  else{
+    UpdateFluxCase3("d",1,sigma,Sl,Sr);
+  }
+
+  for (int j=1; j < _Nx; ++j)
   {
     K = 1.;
     _a = K*max(_Wsol_moins[0][j],_Wsol_moins[0][j+1]);
@@ -446,34 +461,41 @@ void Relaxation::Flux()
     Sr = _Wdelta[1][j+1]+_a*_Wdelta[0][j+1];
     while ((Sl > 0) || (Sr <0))
     {
-      K+=0.0001;
+      K+=0.01;
       _a = K*max(_Wsol_moins[0][j],_Wsol_moins[0][j+1]);
       Sl = _Wdelta[1][j]-_a*_Wdelta[0][j];
       Sr = _Wdelta[1][j+1]+_a*_Wdelta[0][j+1];
     }
     sigma = (_Wdelta[1][j]+_Wdelta[1][j+1])*0.5 - (_Wdelta[3][j+1] - _Wdelta[3][j])/(2*_a);
-    if(sigma > 0)
+    if(sigma > 0){
       UpdateFluxCase2("g",j,sigma,Sl,Sr);
-    else
-      UpdateFluxCase3("g",j,sigma,Sl,Sr);
-
-    K = 1.;
-    _a = K*max(_Wsol_moins[0][j-1],_Wsol_moins[0][j]);
-    Sl = _Wdelta[1][j-1]-_a*_Wdelta[0][j-1];
-    Sr = _Wdelta[1][j]+_a*_Wdelta[0][j];
-    while ((Sl > 0) || (Sr <0))
-    {
-      K+=0.0001;
-      _a = K*max(_Wsol_moins[0][j-1],_Wsol_moins[0][j]);
-      Sl = _Wdelta[1][j-1]-_a*_Wdelta[0][j-1];
-      Sr = _Wdelta[1][j]+_a*_Wdelta[0][j];
+      UpdateFluxCase2("d",j+1,sigma,Sl,Sr);
     }
-    sigma = (_Wdelta[1][j-1]+_Wdelta[1][j])*0.5 - (_Wdelta[3][j] - _Wdelta[3][j-1])/(2*_a);
-    if(sigma > 0)
-      UpdateFluxCase2("d",j,sigma,Sl,Sr);
-    else
-      UpdateFluxCase3("d",j,sigma,Sl,Sr);
+    else{
+      UpdateFluxCase3("g",j,sigma,Sl,Sr);
+      UpdateFluxCase3("d",j+1,sigma,Sl,Sr);
+    }
   }
+
+  K = 1.;
+  _a = K*max(_Wsol_moins[0][_Nx],_Wsol_moins[0][_Nx+1]);
+  Sl = _Wdelta[1][_Nx]-_a*_Wdelta[0][_Nx];
+  Sr = _Wdelta[1][_Nx+1]+_a*_Wdelta[0][_Nx+1];
+  while ((Sl > 0) || (Sr <0))
+  {
+    K+=0.01;
+    _a = K*max(_Wsol_moins[0][_Nx],_Wsol_moins[0][_Nx+1]);
+    Sl = _Wdelta[1][_Nx]-_a*_Wdelta[0][_Nx];
+    Sr = _Wdelta[1][_Nx+1]+_a*_Wdelta[0][_Nx+1];
+  }
+  sigma = (_Wdelta[1][_Nx]+_Wdelta[1][_Nx+1])*0.5 - (_Wdelta[3][_Nx+1] - _Wdelta[3][_Nx])/(2*_a);
+  if(sigma > 0){
+    UpdateFluxCase2("g",_Nx,sigma,Sl,Sr);
+  }
+  else{
+    UpdateFluxCase3("g",_Nx,sigma,Sl,Sr);
+  }
+
 }
 
 void Relaxation::Advance()

@@ -14,7 +14,7 @@ int main(int argc, char** argv)
   int Nx = 100;
   double hx = (xmax-xmin)/(Nx+1.);
 
-  double tfinal = 1.8;
+  double tfinal = 1.;
   double dt = 0.00001;
 
   double gamma = 1.4;
