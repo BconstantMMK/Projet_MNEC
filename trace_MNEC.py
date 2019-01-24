@@ -15,19 +15,21 @@ RusaNorme = np.transpose(RusaNorme)
 
 fig,ax = plt.subplots()
 
-plt.plot(RusaNorme[0],RusaNorme[1],
-color='green',linewidth=2, label='Rusanov')
+# plt.plot(RusaNorme[0],RusaNorme[1],
+# color='green',linewidth=2, label='Rusanov')
 
-# plt.plot(flowRelax[0],flowRelax[2],
-# color='red', marker='o', linestyle='',linewidth=2, markersize=4, label='rho_eq')
+plt.plot(flowRelax[0],flowRelax[2],
+color='red', marker='', linestyle='-',linewidth=2, markersize=4, label='rho_eq')
 
+plt.plot(flowRelax[0],flowRelax[1],
+color='blue', marker='', linestyle='-',linewidth=2, markersize=4, label='Relaxation - Dirichlet')
 
-plt.ylabel("erreur en norme L2 de la densite")
-plt.xlabel("T(s)")
+plt.ylabel("densite")
+plt.xlabel("x(m)")
 plt.legend(loc=0)
 
 # plt.axis([-0.06, 0.06, 0.01, 0.7])
 
 
-filename="Norme_rho_rusanov.png"
+filename="rho_relax.png"
 fig.savefig(filename)
